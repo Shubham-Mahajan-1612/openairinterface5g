@@ -778,6 +778,7 @@ int nr_rx_pusch_group_tp(PHY_VARS_gNB *gNB,
   // Calculate number of unavailable resources due to PTRS
   // This is assumed to be same for all the UEs (same PTRS configuration for all UEs)
   uint32_t unav_res = 0;
+  nr_ptrs_info_t ptrs_info = {0};
   if (rel15_ul_ref->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_PTRS) {
     int ptrsSymbPerSlot = get_ptrs_symbols_in_slot(ptrs_symb_pos, rel15_ul_ref->start_symbol_index, rel15_ul_ref->nr_of_symbols);
     unav_res = ptrs_re_symbol * ptrsSymbPerSlot;
