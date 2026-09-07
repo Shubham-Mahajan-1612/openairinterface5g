@@ -272,39 +272,8 @@ void threadCreate(pthread_t* t, void * (*func)(void*), void * param, char* name,
     AssertFatal(ret == 0, "Error in pthread_attr_setaffinity_np(): ret: %d, errno: %d\n", ret, errno);
   }
 
-/*  ret=pthread_create(t, &attr, func, param);
-  AssertFatal(ret == 0, "Error in pthread_create(): ret: %d, errno: %d\n", ret, errno);*/
-  ret = pthread_create(t, &attr, func, param);
-
-  /*
-   * WSL2 does not permit SCHED_RR/SCHED_FIFO thread creation.
-   * For non-real-time RFsim operation, fall back to normal Linux
-   * scheduling when RT thread creation fails with EPERM.
-   */
-  if (ret == EPERM && set_prio) {
-    LOG_W(UTIL,
-          "%s() for %s: RT scheduling not permitted, "
-          "falling back to normal SCHED_OTHER scheduling\n",
-          __func__, name);
-
-    struct sched_param fallback_param = {0};
-
-    ret = pthread_attr_setschedpolicy(&attr, SCHED_OTHER);
-    AssertFatal(ret == 0,
-                "Error in pthread_attr_setschedpolicy(SCHED_OTHER): ret: %d\n",
-                ret);
-
-    ret = pthread_attr_setschedparam(&attr, &fallback_param);
-    AssertFatal(ret == 0,
-                "Error in pthread_attr_setschedparam(): ret: %d errno: %d\n",
-                ret, errno);
-
-    ret = pthread_create(t, &attr, func, param);
-  }
-
-  AssertFatal(ret == 0,
-              "Error in pthread_create(): ret: %d, errno: %d\n",
-              ret, errno);
+  ret=pthread_create(t, &attr, func, param);
+  AssertFatal(ret == 0, "Error in pthread_create(): ret: %d, errno: %d\n", ret, errno);
 
   char short_name[16];
   strncpy(short_name, name, sizeof(short_name) - 1);
