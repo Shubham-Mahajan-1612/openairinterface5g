@@ -255,6 +255,7 @@ typedef struct NR_UE_RRC_INST_s {
   int current_hfn;
   int current_frame;
   bool sched_reconfsync_sib1;
+  bool is_reconfwsync;
   //Sidelink params
   NR_SL_PreconfigurationNR_r16_t *sl_preconfig;
   // NTN params

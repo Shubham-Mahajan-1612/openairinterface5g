@@ -467,7 +467,7 @@ static void get_sib19_schedinfo(NR_UE_RRC_SI_INFO *SI_info, NR_SI_SchedulingInfo
   }
 }
 
-static void nr_rrc_process_sib1(NR_UE_RRC_INST_t *rrc, NR_UE_RRC_SI_INFO *SI_info, NR_SIB1_t *sib1)
+static void nr_rrc_process_sib1(NR_UE_RRC_INST_t *rrc, NR_UE_RRC_SI_INFO *SI_info, NR_SIB1_t *sib1, bool is_dedicatedSIB1)
 {
   if(g_log->log_component[NR_RRC].level >= OAILOG_DEBUG)
     xer_fprint(stdout, &asn_DEF_NR_SIB1, (const void *) sib1);
@@ -533,6 +533,7 @@ static void nr_rrc_process_sib1(NR_UE_RRC_INST_t *rrc, NR_UE_RRC_SI_INFO *SI_inf
   rrc_msg.payload_type = NR_MAC_RRC_CONFIG_SIB1;
   nr_mac_rrc_config_sib1_t *config_sib1 = &rrc_msg.payload.config_sib1;
   config_sib1->sib1 = sib1;
+  config_sib1->is_dedicated_sib1 = is_dedicatedSIB1;
   config_sib1->can_start_ra = !rrc->is_NTN_UE;
   nr_rrc_send_msg_to_mac(rrc, &rrc_msg);
 }
@@ -1029,6 +1030,9 @@ static bool nr_rrc_cellgroup_configuration(NR_UE_RRC_INST_t *rrc, NR_CellGroupCo
     NR_ReconfigurationWithSync_t *reconfigurationWithSync = spCellConfig->reconfigurationWithSync;
     if (reconfigurationWithSync) {
       RRCLOG_I("Processing reconfigurationWithSync\n");
+      if (dedicatedsib1) {
+        rrc->is_reconfwsync = reconfigurationWithSync->spCellConfigCommon != NULL;
+      }
       nr_rrc_process_reconfigurationWithSync(rrc, reconfigurationWithSync, gNB_index);
       // if RRCReconfiguration does not include dedicatedSIB1-Delivery
       // if the active downlink BWP, which is indicated by the firstActiveDownlinkBWP-Id for the target SpCell of the MCG,
@@ -1116,6 +1120,8 @@ static bool nr_rrc_process_reconfiguration_v1530(NR_UE_RRC_INST_t *rrc, NR_RRCRe
     // TODO perform the full configuration procedure as specified in 5.3.5.11 of 331
     RRCLOG_E("RRCReconfiguration includes fullConfig but this is not implemented yet\n");
   }
+
+  rrc->is_reconfwsync = false;
   if (rec_1530->masterCellGroup) {
     bool ret = nr_rrc_ue_process_masterCellGroup(rrc, rec_1530->masterCellGroup, rec_1530->fullConfig, gNB_index);
     if (!ret)
@@ -1143,7 +1149,7 @@ static bool nr_rrc_process_reconfiguration_v1530(NR_UE_RRC_INST_t *rrc, NR_RRCRe
       SEQUENCE_free(&asn_DEF_NR_SIB1, sib1, 1);
     } else {
       // mac layer will free sib1
-      nr_rrc_process_sib1(rrc, SI_info, sib1);
+      nr_rrc_process_sib1(rrc, SI_info, sib1, rrc->is_reconfwsync);
     }
   }
   if (rec_1530->dedicatedSystemInformationDelivery) {
@@ -2223,7 +2229,7 @@ static void nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
   if (bcch_message->message.present == NR_BCCH_DL_SCH_MessageType_PR_c1) {
     switch (bcch_message->message.choice.c1->present) {
       case NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1:
-        nr_rrc_process_sib1(rrc, SI_info, bcch_message->message.choice.c1->choice.systemInformationBlockType1);
+        nr_rrc_process_sib1(rrc, SI_info, bcch_message->message.choice.c1->choice.systemInformationBlockType1, false);
         // mac layer will free after usage the sib1
         bcch_message->message.choice.c1->choice.systemInformationBlockType1 = NULL;
         break;
